@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../core/models/mod_info.dart';
 
 /// Mod list section with cards
@@ -23,7 +24,7 @@ class ModListSection extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Installed Mods (${mods.length})',
+              '${AppStrings.installedMods} (${mods.length})',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -31,7 +32,7 @@ class ModListSection extends StatelessWidget {
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: onRefresh,
-              tooltip: 'Refresh mods',
+              tooltip: AppStrings.refresh,
             ),
           ],
         ),
@@ -51,15 +52,8 @@ class ModListSection extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'No mods installed',
+                      AppStrings.noModsInstalled,
                       style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Install mods to enhance your game',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
                     ),
                   ],
                 ),
@@ -108,23 +102,23 @@ class _ModCard extends StatelessWidget {
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('v${mod.version}'),
+            Text('${AppStrings.version}: ${mod.version}'),
             if (mod.author != null)
               Text(
-                'by ${mod.author}',
+                '${AppStrings.author}: ${mod.author}',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
           ],
         ),
         trailing: PopupMenuButton(
           itemBuilder: (context) => [
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'delete',
               child: Row(
                 children: [
-                  Icon(Icons.delete, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Delete'),
+                  const Icon(Icons.delete, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Text(AppStrings.delete),
                 ],
               ),
             ),

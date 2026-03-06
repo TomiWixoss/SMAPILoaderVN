@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_strings.dart';
 import '../../../core/models/app_status.dart';
 
 /// Card displaying app status information
@@ -26,7 +27,7 @@ class AppStatusCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  status.isReady ? 'Ready to Launch' : 'Setup Required',
+                  status.isReady ? AppStrings.ready : AppStrings.notReady,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -34,11 +35,11 @@ class AppStatusCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            _buildInfoRow(context, 'Launcher', status.launcherVersion),
+            _buildInfoRow(context, AppStrings.launcherVersion, status.launcherVersion),
             if (status.gameVersion != null)
-              _buildInfoRow(context, 'Game', status.gameVersion!),
+              _buildInfoRow(context, AppStrings.gameVersion, status.gameVersion!),
             if (status.smapiVersion != null)
-              _buildInfoRow(context, 'SMAPI', status.smapiVersion!),
+              _buildInfoRow(context, AppStrings.smapiVersion, status.smapiVersion!),
           ],
         ),
       ),

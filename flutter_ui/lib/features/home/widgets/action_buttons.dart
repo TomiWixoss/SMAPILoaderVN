@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../core/constants/app_strings.dart';
 
 /// Action buttons for main operations
 class ActionButtons extends StatelessWidget {
@@ -30,7 +31,7 @@ class ActionButtons extends StatelessWidget {
         ElevatedButton.icon(
           onPressed: isReady && !isLoading ? onStartGame : null,
           icon: const Icon(Icons.play_arrow, size: 28),
-          label: const Text('Start Game', style: TextStyle(fontSize: 18)),
+          label: const Text(AppStrings.startGame, style: TextStyle(fontSize: 18)),
           style: ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(vertical: 16),
             backgroundColor: Theme.of(context).colorScheme.primary,
@@ -48,23 +49,23 @@ class ActionButtons extends StatelessWidget {
             OutlinedButton.icon(
               onPressed: isLoading ? null : onUploadLog,
               icon: const Icon(Icons.upload_file, size: 20),
-              label: const Text('Upload Log'),
+              label: const Text(AppStrings.uploadLog),
             ),
             OutlinedButton.icon(
               onPressed: isLoading ? null : onOpenModFolder,
               icon: const Icon(Icons.folder_open, size: 20),
-              label: const Text('Mod Folder'),
+              label: const Text(AppStrings.openModFolder),
             ),
             if (!isReady)
               OutlinedButton.icon(
                 onPressed: isLoading ? null : onInstallSmapi,
                 icon: const Icon(Icons.download, size: 20),
-                label: const Text('Install SMAPI'),
+                label: const Text(AppStrings.installSmapi),
               ),
             OutlinedButton.icon(
               onPressed: isLoading ? null : onInstallMod,
               icon: const Icon(Icons.add, size: 20),
-              label: const Text('Install Mod'),
+              label: const Text(AppStrings.installMod),
             ),
           ],
         ),

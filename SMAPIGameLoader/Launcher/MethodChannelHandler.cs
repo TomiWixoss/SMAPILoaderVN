@@ -1,12 +1,10 @@
 using Android.Content;
 using IO.Flutter.Plugin.Common;
 using Java.Util;
-using SMAPIGameLoader.Tool;
+using SMAPIGameLoader.Services;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using Xamarin.Essentials;
 
 namespace SMAPIGameLoader.Launcher
 {
@@ -16,11 +14,19 @@ namespace SMAPIGameLoader.Launcher
     public class MethodChannelHandler : Java.Lang.Object, MethodChannel.IMethodCallHandler
     {
         private readonly Context _context;
+        private readonly IGameService _gameService;
+        private readonly ISmapiService _smapiService;
+        private readonly IModService _modService;
+        private readonly IStatusService _statusService;
         private const string ChannelName = "abc.smapi.gameloadervn/bridge";
 
         public MethodChannelHandler(Context context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
+            _gameService = new GameService(context);
+            _smapiService = new SmapiService();
+            _modService = new ModService(context);
+            _statusService = new StatusService(_gameService, _smapiService);
         }
 
         public void OnMethodCall(MethodCall call, MethodChannel.IResult result)
@@ -81,88 +87,69 @@ namespace SMAPIGameLoader.Launcher
             result.Success("✅ Connection successful! C# backend is working.");
         }
 
-        private void HandleGetAppStatus(MethodChannel.IResult result)
+        private async void HandleGetAppStatus(MethodChannel.IResult result)
         {
-            var status = new HashMap();
-            status.Put("launcherVersion", AppInfo.VersionString);
-            status.Put("gameVersion", StardewApkTool.CurrentGameVersion?.ToString() ?? "Not installed");
-            status.Put("smapiVersion", SMAPIInstaller.GetCurrentVersion()?.ToString() ?? "Not installed");
-            status.Put("isReady", Java.Lang.Boolean.ValueOf(StardewApkTool.IsInstalled && SMAPIInstaller.IsInstalled));
-
-            result.Success(status);
-        }
-
-        private void HandleGetModList(MethodChannel.IResult result)
-        {
-            var modList = new ArrayList();
-
-            if (!Directory.Exists(ModTool.ModsDir))
-            {
-                result.Success(modList);
-                return;
-            }
-
-            var modDirs = Directory.GetDirectories(ModTool.ModsDir);
-            foreach (var modDir in modDirs)
-            {
-                try
-                {
-                    var manifestPath = Path.Combine(modDir, "manifest.json");
-                    if (!File.Exists(manifestPath))
-                        continue;
-
-                    var manifestText = File.ReadAllText(manifestPath);
-                    var manifest = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(manifestText);
-
-                    if (manifest == null)
-                        continue;
-
-                    var modInfo = new HashMap();
-                    modInfo.Put("id", manifest.GetValueOrDefault("UniqueID", Path.GetFileName(modDir))?.ToString() ?? "");
-                    modInfo.Put("name", manifest.GetValueOrDefault("Name", "Unknown")?.ToString() ?? "Unknown");
-                    modInfo.Put("version", manifest.GetValueOrDefault("Version", "0.0.0")?.ToString() ?? "0.0.0");
-                    modInfo.Put("author", manifest.GetValueOrDefault("Author", null)?.ToString());
-                    modInfo.Put("description", manifest.GetValueOrDefault("Description", null)?.ToString());
-                    modInfo.Put("isEnabled", Java.Lang.Boolean.True);
-                    modInfo.Put("iconPath", (string?)null);
-
-                    modList.Add(modInfo);
-                }
-                catch
-                {
-                    // Skip invalid mods
-                    continue;
-                }
-            }
-
-            result.Success(modList);
-        }
-
-        private void HandleStartGame(MethodChannel.IResult result)
-        {
-            if (!StardewApkTool.IsInstalled)
-            {
-                result.Error("GAME_NOT_INSTALLED", "Stardew Valley is not installed", null);
-                return;
-            }
-
-            if (!SMAPIInstaller.IsInstalled)
-            {
-                result.Error("SMAPI_NOT_INSTALLED", "SMAPI is not installed", null);
-                return;
-            }
-
             try
             {
-                if (_context is Android.App.Activity activity)
+                var statusDict = await _statusService.GetAppStatusAsync();
+                var status = new HashMap();
+                
+                foreach (var kvp in statusDict)
                 {
-                    EntryGame.LaunchGameActivity(activity);
-                    result.Success(null);
+                    if (kvp.Value is bool boolValue)
+                        status.Put(kvp.Key, Java.Lang.Boolean.ValueOf(boolValue));
+                    else
+                        status.Put(kvp.Key, kvp.Value?.ToString());
                 }
-                else
+
+                result.Success(status);
+            }
+            catch (Exception ex)
+            {
+                result.Error("ERROR", ex.Message, ex.StackTrace);
+            }
+        }
+
+        private async void HandleGetModList(MethodChannel.IResult result)
+        {
+            try
+            {
+                var mods = await _modService.GetModListAsync();
+                var modList = new ArrayList();
+
+                foreach (var mod in mods)
                 {
-                    result.Error("INVALID_CONTEXT", "Context is not an Activity", null);
+                    var modInfo = new HashMap();
+                    foreach (var kvp in mod)
+                    {
+                        if (kvp.Value is bool boolValue)
+                            modInfo.Put(kvp.Key, Java.Lang.Boolean.ValueOf(boolValue));
+                        else if (kvp.Value != null)
+                            modInfo.Put(kvp.Key, kvp.Value.ToString());
+                        else
+                            modInfo.Put(kvp.Key, null);
+                    }
+                    modList.Add(modInfo);
                 }
+
+                result.Success(modList);
+            }
+            catch (Exception ex)
+            {
+                result.Error("ERROR", ex.Message, ex.StackTrace);
+            }
+        }
+
+        private async void HandleStartGame(MethodChannel.IResult result)
+        {
+            try
+            {
+                await _gameService.LaunchGameAsync();
+                result.Success(null);
+            }
+            catch (InvalidOperationException ex)
+            {
+                result.Error("LAUNCH_ERROR", ex.Message, null);
             }
             catch (Exception ex)
             {
@@ -170,21 +157,16 @@ namespace SMAPIGameLoader.Launcher
             }
         }
 
-        private void HandleUploadLog(MethodChannel.IResult result)
+        private async void HandleUploadLog(MethodChannel.IResult result)
         {
             try
             {
-                var logPath = Path.Combine(ModTool.ModsDir, "SMAPI-latest.txt");
-                if (!File.Exists(logPath))
-                {
-                    result.Error("LOG_NOT_FOUND", "SMAPI log file not found", null);
-                    return;
-                }
-
-                // TODO: Implement actual log upload to smapi.io/log
-                // For now, return a placeholder URL
-                var url = "https://smapi.io/log/placeholder";
+                var url = await _smapiService.UploadLogAsync();
                 result.Success(url);
+            }
+            catch (System.IO.FileNotFoundException)
+            {
+                result.Error("LOG_NOT_FOUND", "SMAPI log file not found", null);
             }
             catch (Exception ex)
             {
@@ -192,20 +174,11 @@ namespace SMAPIGameLoader.Launcher
             }
         }
 
-        private void HandleOpenModFolder(MethodChannel.IResult result)
+        private async void HandleOpenModFolder(MethodChannel.IResult result)
         {
             try
             {
-                if (!Directory.Exists(ModTool.ModsDir))
-                {
-                    Directory.CreateDirectory(ModTool.ModsDir);
-                }
-
-                var intent = new Intent(Intent.ActionView);
-                intent.SetDataAndType(Android.Net.Uri.Parse(ModTool.ModsDir), "resource/folder");
-                intent.AddFlags(ActivityFlags.NewTask);
-                _context.StartActivity(intent);
-
+                await _modService.OpenModFolderAsync();
                 result.Success(null);
             }
             catch (Exception ex)
@@ -214,7 +187,7 @@ namespace SMAPIGameLoader.Launcher
             }
         }
 
-        private void HandleInstallSmapi(MethodCall call, MethodChannel.IResult result)
+        private async void HandleInstallSmapi(MethodCall call, MethodChannel.IResult result)
         {
             try
             {
@@ -225,7 +198,11 @@ namespace SMAPIGameLoader.Launcher
                     return;
                 }
 
-                // TODO: Implement SMAPI installation from APK
+                await _smapiService.InstallSmapiAsync(filePath);
+                result.Success(null);
+            }
+            catch (NotImplementedException)
+            {
                 result.Error("NOT_IMPLEMENTED", "SMAPI installation not yet implemented", null);
             }
             catch (Exception ex)
@@ -234,7 +211,7 @@ namespace SMAPIGameLoader.Launcher
             }
         }
 
-        private void HandleInstallMod(MethodCall call, MethodChannel.IResult result)
+        private async void HandleInstallMod(MethodCall call, MethodChannel.IResult result)
         {
             try
             {
@@ -245,8 +222,12 @@ namespace SMAPIGameLoader.Launcher
                     return;
                 }
 
-                // TODO: Implement mod installation from ZIP
-                result.Error("NOT_IMPLEMENTED", "Mod installation not yet implemented", null);
+                await _modService.InstallModAsync(filePath);
+                result.Success(null);
+            }
+            catch (InvalidOperationException ex)
+            {
+                result.Error("INVALID_MOD", ex.Message, null);
             }
             catch (Exception ex)
             {
@@ -254,9 +235,10 @@ namespace SMAPIGameLoader.Launcher
             }
         }
 
-        private void HandleDeleteMod(MethodCall call, MethodChannel.IResult result)
+        private async void HandleDeleteMod(MethodCall call, MethodChannel.IResult result)
         {
-            try {
+            try
+            {
                 var args = call.Arguments() as HashMap;
                 var modId = args?.Get("modId")?.ToString();
 
@@ -266,27 +248,12 @@ namespace SMAPIGameLoader.Launcher
                     return;
                 }
 
-                // Find and delete mod directory
-                var modDirs = Directory.GetDirectories(ModTool.ModsDir);
-                foreach (var modDir in modDirs)
-                {
-                    var manifestPath = Path.Combine(modDir, "manifest.json");
-                    if (File.Exists(manifestPath))
-                    {
-                        var manifestText = File.ReadAllText(manifestPath);
-                        var manifest = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(manifestText);
-                        var uniqueId = manifest?.GetValueOrDefault("UniqueID", null)?.ToString();
-
-                        if (uniqueId == modId)
-                        {
-                            Directory.Delete(modDir, true);
-                            result.Success(null);
-                            return;
-                        }
-                    }
-                }
-
-                result.Error("MOD_NOT_FOUND", $"Mod with ID '{modId}' not found", null);
+                await _modService.DeleteModAsync(modId);
+                result.Success(null);
+            }
+            catch (InvalidOperationException ex)
+            {
+                result.Error("MOD_NOT_FOUND", ex.Message, null);
             }
             catch (Exception ex)
             {
