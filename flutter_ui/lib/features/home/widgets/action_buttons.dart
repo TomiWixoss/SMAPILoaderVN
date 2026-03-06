@@ -9,7 +9,6 @@ class ActionButtons extends StatelessWidget {
   final VoidCallback onUploadLog;
   final VoidCallback onOpenModFolder;
   final VoidCallback onInstallSmapi;
-  final VoidCallback onInstallMod;
 
   const ActionButtons({
     super.key,
@@ -19,7 +18,6 @@ class ActionButtons extends StatelessWidget {
     required this.onUploadLog,
     required this.onOpenModFolder,
     required this.onInstallSmapi,
-    required this.onInstallMod,
   });
 
   @override
@@ -62,11 +60,6 @@ class ActionButtons extends StatelessWidget {
                 icon: const Icon(Icons.download, size: 20),
                 label: const Text(AppStrings.installSmapi),
               ),
-            OutlinedButton.icon(
-              onPressed: isLoading ? null : onInstallMod,
-              icon: const Icon(Icons.add, size: 20),
-              label: const Text(AppStrings.installMod),
-            ),
           ],
         ),
       ],

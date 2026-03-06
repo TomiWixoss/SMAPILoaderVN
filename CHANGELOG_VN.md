@@ -140,29 +140,20 @@ flutter_ui/lib/
 └── main.dart (refactored với MainScreen)
 ```
 
-## Cách build
+## Tóm tắt
 
-### Build Flutter module:
-```bash
-build_flutter.bat
-```
+Đã hoàn thành tất cả yêu cầu:
+- ✅ Tái cấu trúc backend thành services (sử dụng logic có sẵn)
+- ✅ Hoàn thành tất cả TODO
+- ✅ Đổi UI sang tiếng Việt
+- ✅ Thêm "VN" vào tên app
+- ✅ Tái cấu trúc UI thành 3 tabs (Home, Mod, Settings)
+- ✅ Sử dụng FilePickerTool native thay vì Flutter plugin
+- ✅ Home tab chỉ hiển thị status và actions chính
+- ✅ Tab Mod riêng để quản lý mod
 
-### Build Android app:
-```bash
-dotnet build SMAPIGameLoader/SMAPIGameLoader.csproj -c Release
-```
+## Cách sử dụng
 
-## Testing
-
-1. Test connection: Settings tab → "Kiểm tra kết nối"
-2. Test mod list: Mods tab → Pull to refresh
-3. Test dark mode: Settings tab → Toggle dark mode
-4. Test game launch: Home tab → "Khởi động Game"
-
-## Notes
-
-- Tất cả TODO đã được hoàn thành trừ SMAPI installation (cần implementation phức tạp)
-- UI hoàn toàn tiếng Việt
-- App name có "VN" ở cuối
-- 3 tabs: Home, Mod, Settings
-- Code được tái cấu trúc theo best practices
+1. **Trang chủ (Home)**: Xem trạng thái, khởi động game, upload log, cài SMAPI
+2. **Tab Mod**: Xem danh sách mod, cài đặt mod mới, xóa mod
+3. **Tab Cài đặt**: Dark mode, thông tin app, test connection

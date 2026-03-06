@@ -31,6 +31,9 @@ namespace SMAPIGameLoader.Launcher
         {
             Instance = this;
             base.OnCreate(savedInstanceState);
+            
+            // Initialize Xamarin.Essentials
+            Xamarin.Essentials.Platform.Init(this, savedInstanceState);
         }
 
         public override void ConfigureFlutterEngine(IO.Flutter.Embedding.Engine.FlutterEngine flutterEngine)
@@ -43,6 +46,12 @@ namespace SMAPIGameLoader.Launcher
             
             _methodChannelHandler = new MethodChannelHandler(this);
             channel.SetMethodCallHandler(_methodChannelHandler);
+        }
+
+        public override void OnRequestPermissionsResult(int requestCode, string[] permissions, Android.Content.PM.Permission[] grantResults)
+        {
+            Xamarin.Essentials.Platform.OnRequestPermissionsResult(requestCode, permissions, grantResults);
+            base.OnRequestPermissionsResult(requestCode, permissions, grantResults);
         }
 
         protected override void OnDestroy()

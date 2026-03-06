@@ -2,9 +2,11 @@ using Android.Content;
 using IO.Flutter.Plugin.Common;
 using Java.Util;
 using SMAPIGameLoader.Services;
+using SMAPIGameLoader.Tool;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 
 namespace SMAPIGameLoader.Launcher
 {
@@ -60,11 +62,11 @@ namespace SMAPIGameLoader.Launcher
                         break;
 
                     case "pickAndInstallSmapi":
-                        HandleInstallSmapi(call, result);
+                        HandlePickAndInstallSmapi(result);
                         break;
 
                     case "pickAndInstallMod":
-                        HandleInstallMod(call, result);
+                        HandlePickAndInstallMod(result);
                         break;
 
                     case "deleteMod":
@@ -187,18 +189,26 @@ namespace SMAPIGameLoader.Launcher
             }
         }
 
-        private async void HandleInstallSmapi(MethodCall call, MethodChannel.IResult result)
+        private async void HandlePickAndInstallSmapi(MethodChannel.IResult result)
         {
             try
             {
-                var filePath = call.Arguments()?.ToString();
-                if (string.IsNullOrEmpty(filePath))
+                // Ensure we have activity context
+                if (_context is not Android.App.Activity activity)
                 {
-                    result.Error("INVALID_PATH", "File path is required", null);
+                    result.Error("NO_ACTIVITY", "Context is not an Activity", null);
                     return;
                 }
 
-                await _smapiService.InstallSmapiAsync(filePath);
+                // Use FilePickerTool to pick file
+                var pickFile = await PickZipFileWithContext(activity, "Chọn file SMAPI-4.x.x.zip cho Android");
+                if (pickFile == null)
+                {
+                    result.Error("CANCELLED", "User cancelled file selection", null);
+                    return;
+                }
+
+                await _smapiService.InstallSmapiAsync(pickFile.FullPath);
                 result.Success(null);
             }
             catch (NotImplementedException)
@@ -211,18 +221,26 @@ namespace SMAPIGameLoader.Launcher
             }
         }
 
-        private async void HandleInstallMod(MethodCall call, MethodChannel.IResult result)
+        private async void HandlePickAndInstallMod(MethodChannel.IResult result)
         {
             try
             {
-                var filePath = call.Arguments()?.ToString();
-                if (string.IsNullOrEmpty(filePath))
+                // Ensure we have activity context
+                if (_context is not Android.App.Activity activity)
                 {
-                    result.Error("INVALID_PATH", "File path is required", null);
+                    result.Error("NO_ACTIVITY", "Context is not an Activity", null);
                     return;
                 }
 
-                await _modService.InstallModAsync(filePath);
+                // Use FilePickerTool to pick file
+                var pickFile = await PickZipFileWithContext(activity, "Chọn file mod .zip");
+                if (pickFile == null)
+                {
+                    result.Error("CANCELLED", "User cancelled file selection", null);
+                    return;
+                }
+
+                await _modService.InstallModAsync(pickFile.FullPath);
                 result.Success(null);
             }
             catch (InvalidOperationException ex)
@@ -233,6 +251,33 @@ namespace SMAPIGameLoader.Launcher
             {
                 result.Error("INSTALL_FAILED", $"Failed to install mod: {ex.Message}", null);
             }
+        }
+
+        // Helper method to pick zip file with specific activity context
+        private async Task<Xamarin.Essentials.FileResult> PickZipFileWithContext(Android.App.Activity activity, string title)
+        {
+            // Check permissions for Android 6-10
+            if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.M && 
+                Android.OS.Build.VERSION.SdkInt <= Android.OS.BuildVersionCodes.Q)
+            {
+                if (AndroidX.Core.Content.ContextCompat.CheckSelfPermission(activity, Android.Manifest.Permission.ReadExternalStorage) != Android.Content.PM.Permission.Granted
+                    || AndroidX.Core.Content.ContextCompat.CheckSelfPermission(activity, Android.Manifest.Permission.WriteExternalStorage) != Android.Content.PM.Permission.Granted)
+                {
+                    ToastNotifyTool.Notify("Vui lòng cho phép quyền truy cập file");
+                    AndroidX.Core.App.ActivityCompat.RequestPermissions(activity,
+                        new[] { Android.Manifest.Permission.ReadExternalStorage, Android.Manifest.Permission.WriteExternalStorage },
+                        1000);
+                    return null;
+                }
+            }
+
+            var options = new Xamarin.Essentials.PickOptions
+            {
+                PickerTitle = title,
+                FileTypes = FilePickerTool.FileTypeZip,
+            };
+            
+            return await Xamarin.Essentials.FilePicker.PickAsync(options);
         }
 
         private async void HandleDeleteMod(MethodCall call, MethodChannel.IResult result)

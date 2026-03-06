@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/services/platform_service.dart';
@@ -79,7 +78,6 @@ class _HomeTabState extends State<HomeTab> {
                   onUploadLog: () => _handleUploadLog(context, provider),
                   onOpenModFolder: () => _handleOpenModFolder(context),
                   onInstallSmapi: () => _handleInstallSmapi(context, provider),
-                  onInstallMod: () => _handleInstallMod(context, provider),
                 ),
               ],
             ),
@@ -149,58 +147,26 @@ class _HomeTabState extends State<HomeTab> {
 
   Future<void> _handleInstallSmapi(BuildContext context, HomeProvider provider) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['apk'],
-      );
-
-      if (result != null && result.files.single.path != null) {
-        await PlatformService.installSmapi(result.files.single.path!);
-        await provider.loadData();
-        
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppStrings.smapiInstalledSuccess)),
-          );
-        }
+      // Let native code handle file picking
+      await PlatformService.pickAndInstallSmapi();
+      await provider.loadData();
+      
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text(AppStrings.smapiInstalledSuccess)),
+        );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${AppStrings.smapiInstalledError}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _handleInstallMod(BuildContext context, HomeProvider provider) async {
-    try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['zip'],
-      );
-
-      if (result != null && result.files.single.path != null) {
-        await PlatformService.installMod(result.files.single.path!);
-        await provider.loadData();
-        
-        if (context.mounted) {
+        // Don't show error if user cancelled
+        if (!e.toString().contains('CANCELLED')) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text(AppStrings.modInstalledSuccess)),
+            SnackBar(
+              content: Text('${AppStrings.smapiInstalledError}: $e'),
+              backgroundColor: Colors.red,
+            ),
           );
         }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${AppStrings.modInstalledError}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
       }
     }
   }

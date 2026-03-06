@@ -73,23 +73,49 @@ class PlatformService {
     }
   }
   
-  /// Install SMAPI from APK file
-  static Future<void> installSmapi(String filePath) async {
-    try {
-      await _channel.invokeMethod('pickAndInstallSmapi', {'filePath': filePath});
-    } on PlatformException catch (e) {
-      throw Exception('Failed to install SMAPI: ${e.message}');
+    /// <summary>
+    /// Install SMAPI from APK file
+    /// </summary>
+    static Future<void> installSmapi(String filePath) async {
+      try {
+        await _channel.invokeMethod('pickAndInstallSmapi', filePath);
+      } on PlatformException catch (e) {
+        throw Exception('Failed to install SMAPI: ${e.message}');
+      }
     }
-  }
-  
-  /// Install mod from file
-  static Future<void> installMod(String filePath) async {
-    try {
-      await _channel.invokeMethod('pickAndInstallMod', {'filePath': filePath});
-    } on PlatformException catch (e) {
-      throw Exception('Failed to install mod: ${e.message}');
+
+    /// <summary>
+    /// Pick and install SMAPI (let native handle file picking)
+    /// </summary>
+    static Future<void> pickAndInstallSmapi() async {
+      try {
+        await _channel.invokeMethod('pickAndInstallSmapi');
+      } on PlatformException catch (e) {
+        throw Exception('Failed to install SMAPI: ${e.message}');
+      }
     }
-  }
+
+    /// <summary>
+    /// Install mod from file
+    /// </summary>
+    static Future<void> installMod(String filePath) async {
+      try {
+        await _channel.invokeMethod('pickAndInstallMod', filePath);
+      } on PlatformException catch (e) {
+        throw Exception('Failed to install mod: ${e.message}');
+      }
+    }
+
+    /// <summary>
+    /// Pick and install mod (let native handle file picking)
+    /// </summary>
+    static Future<void> pickAndInstallMod() async {
+      try {
+        await _channel.invokeMethod('pickAndInstallMod');
+      } on PlatformException catch (e) {
+        throw Exception('Failed to install mod: ${e.message}');
+      }
+    }
   
   /// Delete a mod
   static Future<void> deleteMod(String modId) async {

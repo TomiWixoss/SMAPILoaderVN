@@ -142,12 +142,15 @@ class _ModsScreenState extends State<ModsScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('${AppStrings.modInstalledError}: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // Don't show error if user cancelled
+        if (!e.toString().contains('CANCELLED')) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${AppStrings.modInstalledError}: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }
