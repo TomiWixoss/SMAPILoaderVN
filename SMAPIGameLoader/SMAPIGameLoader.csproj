@@ -13,6 +13,9 @@
 		<ApplicationVersion>$([System.DateTimeOffset]::Now.ToUnixTimeSeconds())</ApplicationVersion>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
+		<!-- Android SDK Path -->
+		<AndroidSdkDirectory>C:\Users\tomis\AppData\Local\Android\sdk</AndroidSdkDirectory>
+		
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<AndroidPackageFormat>apk</AndroidPackageFormat>
