@@ -16,12 +16,14 @@ class LauncherScreen extends StatelessWidget {
         centerTitle: true,
         elevation: 2,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+      body: Center(
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
               // Logo placeholder
               Icon(
                 Icons.games,
@@ -140,6 +142,7 @@ class LauncherScreen extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }
