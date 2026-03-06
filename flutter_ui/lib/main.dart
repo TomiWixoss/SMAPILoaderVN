@@ -1,58 +1,30 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'services/smapi_bridge_service.dart';
-import 'screens/launcher_screen.dart';
+import 'core/theme/app_theme.dart';
+import 'features/home/providers/home_provider.dart';
+import 'features/home/screens/home_screen.dart';
 
-void main() => runApp(const SMAPILauncherApp());
+void main() {
+  runApp(const MyApp());
+}
 
-class SMAPILauncherApp extends StatelessWidget {
-  const SMAPILauncherApp({super.key});
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => LauncherState()),
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
       ],
       child: MaterialApp(
         title: 'SMAPI Launcher',
-        debugShowCheckedModeBanner: false,
-        theme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.green,
-            brightness: Brightness.light,
-          ),
-        ),
-        darkTheme: ThemeData(
-          useMaterial3: true,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.green,
-            brightness: Brightness.dark,
-          ),
-        ),
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.system,
-        home: const LauncherScreen(),
+        home: const HomeScreen(),
+        debugShowCheckedModeBanner: false,
       ),
     );
-  }
-}
-
-class LauncherState extends ChangeNotifier {
-  String _message = '';
-  bool _isLoading = false;
-
-  String get message => _message;
-  bool get isLoading => _isLoading;
-
-  void setMessage(String msg) {
-    _message = msg;
-    notifyListeners();
-  }
-
-  void setLoading(bool loading) {
-    _isLoading = loading;
-    notifyListeners();
   }
 }

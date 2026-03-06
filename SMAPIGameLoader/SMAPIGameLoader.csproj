@@ -16,6 +16,11 @@
 		<!-- Android SDK Path -->
 		<AndroidSdkDirectory>C:\Users\tomis\AppData\Local\Android\sdk</AndroidSdkDirectory>
 		
+		<!-- Enable desugaring for Java 8 features on API < 26 -->
+		<AndroidDexTool>d8</AndroidDexTool>
+		<AndroidEnableDesugar>true</AndroidEnableDesugar>
+		<_AndroidAllowDuplicateTypes>true</_AndroidAllowDuplicateTypes>
+		
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<AndroidPackageFormat>apk</AndroidPackageFormat>
@@ -50,8 +55,17 @@
 		<PackageReference Include="System.IO.Compression" Version="4.3.0" />
 		<PackageReference Include="Xamarin.AndroidX.AppCompat" Version="1.7.0.4" />
 		<PackageReference Include="Xamarin.Essentials" Version="1.7.7" />
-
 	</ItemGroup>
+	
+	<!-- Remove duplicate GeneratedPluginRegistrant class from Flutter AAR -->
+	<Target Name="RemoveDuplicateGeneratedPluginRegistrant" AfterTargets="_ExtractLibraryProjectImports" BeforeTargets="_CompileToDalvik">
+		<Message Text="Removing duplicate GeneratedPluginRegistrant classes..." Importance="high" />
+		<Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -Command &quot;&amp; { $ErrorActionPreference = 'SilentlyContinue'; $jars = Get-ChildItem -Path '$(IntermediateOutputPath)lp' -Recurse -Filter 'classes.jar' | Where-Object { $_.FullName -match 'jl' }; foreach ($jar in $jars) { $tempDir = Join-Path $env:TEMP ([System.IO.Path]::GetRandomFileName()); New-Item -ItemType Directory -Path $tempDir -Force | Out-Null; Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::ExtractToDirectory($jar.FullName, $tempDir); $dupClass = Get-ChildItem -Path $tempDir -Recurse -Filter 'GeneratedPluginRegistrant.class'; if ($dupClass) { Remove-Item $dupClass.FullName -Force; Remove-Item $jar.FullName -Force; [System.IO.Compression.ZipFile]::CreateFromDirectory($tempDir, $jar.FullName); Write-Host ('Removed GeneratedPluginRegistrant from ' + $jar.FullName); } Remove-Item $tempDir -Recurse -Force; } }&quot;" 
+			  Condition="Exists('$(IntermediateOutputPath)lp')" 
+			  ContinueOnError="true" 
+			  IgnoreExitCode="true" />
+	</Target>
+	
 	<ItemGroup>
 		<ProjectReference Include="..\AssemblyStore\AssemblyStore.csproj" />
 		<ProjectReference Include="..\FlutterBinding\FlutterBinding.csproj" />
