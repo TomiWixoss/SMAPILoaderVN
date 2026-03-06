@@ -1,0 +1,16 @@
+<metadata>
+  <!-- Make FlutterActivity and related classes public -->
+  <attr path="/api/package[@name='io.flutter.embedding.android']/class[@name='FlutterActivity']" name="visibility">public</attr>
+  <attr path="/api/package[@name='io.flutter.embedding.android']/class[@name='FlutterActivityAndFragmentDelegate']" name="visibility">public</attr>
+  <attr path="/api/package[@name='io.flutter.embedding.android']/class[@name='FlutterFragment']" name="visibility">public</attr>
+  <attr path="/api/package[@name='io.flutter.embedding.engine']/class[@name='FlutterEngine']" name="visibility">public</attr>
+  <attr path="/api/package[@name='io.flutter.embedding.engine']/class[@name='FlutterEngineCache']" name="visibility">public</attr>
+  <attr path="/api/package[@name='io.flutter.embedding.engine.dart']/class[@name='DartExecutor']" name="visibility">public</attr>
+  <attr path="/api/package[@name='io.flutter.plugin.common']/class[@name='MethodChannel']" name="visibility">public</attr>
+  <attr path="/api/package[@name='io.flutter.plugin.common']/class[@name='MethodCall']" name="visibility">public</attr>
+  
+  <!-- Remove problematic classes that cause build errors -->
+  <remove-node path="/api/package[@name='io.flutter.embedding.engine.dart']/interface[@name='DartExecutor.IsolateServiceIdListener']"/>
+  <remove-node path="/api/package[@name='io.flutter.embedding.android']/class[@name='FlutterFragmentActivity']"/>
+  <remove-node path="/api/package[@name='io.flutter.embedding.android']/class[@name='FlutterView']"/>
+</metadata>

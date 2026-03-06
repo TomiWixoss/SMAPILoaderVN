@@ -2,7 +2,7 @@
 	<PropertyGroup>
 		<TargetFramework>net8.0-android</TargetFramework>
 		<OutputType>Exe</OutputType>
-		<ApplicationId>com.companyname.SMAPIGameLoader</ApplicationId>
+		<ApplicationId>abc.smapi.gameloadervn</ApplicationId>
 		<SupportedOSPlatformVersion>23.0</SupportedOSPlatformVersion>
 		<AndroidSigningKeyStore>debug.keystore</AndroidSigningKeyStore>
 		<PackageIcon>icon.png</PackageIcon>
@@ -54,6 +54,7 @@
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\AssemblyStore\AssemblyStore.csproj" />
+		<ProjectReference Include="..\FlutterBinding\FlutterBinding.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 		<Reference Include="0Harmony">

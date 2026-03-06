@@ -1,197 +1,341 @@
 using System;
-using _Microsoft.Android.Resource.Designer;
+using System.Collections.Generic;
 using Android.App;
 using Android.Content.PM;
 using Android.OS;
-using Android.Widget;
+using IO.Flutter.Embedding.Android;
+using IO.Flutter.Plugin.Common;
+using Newtonsoft.Json;
 using SMAPIGameLoader.Tool;
 using Xamarin.Essentials;
-using AndroidX.AppCompat.App;
-using System.Text;
-
+using Java.Util;
 
 namespace SMAPIGameLoader.Launcher;
 
 [Activity(
     Label = "SMAPI Launcher",
     MainLauncher = true,
-    Theme = "@style/AppTheme",
+    Theme = "@style/LaunchTheme",
     AlwaysRetainTaskState = true,
     LaunchMode = LaunchMode.SingleInstance,
     ScreenOrientation = ScreenOrientation.SensorPortrait
 )]
-public class LauncherActivity : AppCompatActivity
+public class LauncherActivity : FlutterActivity, MethodChannel.IMethodCallHandler
 {
-    public static LauncherActivity Instance { get; private set; }
-
-    private static bool IsDeviceSupport => IntPtr.Size == 8;
+    private const string CHANNEL = "com.smapiloader.app/bridge";
+    private MethodChannel? _methodChannel;
+    public static LauncherActivity? Instance { get; private set; }
 
     protected override void OnCreate(Bundle? savedInstanceState)
     {
         Instance = this;
         base.OnCreate(savedInstanceState);
 
-        SetContentView(ResourceConstant.Layout.LauncherLayout);
-
         Platform.Init(this, savedInstanceState);
         ActivityTool.Init(this);
 
-        //assert
+        // Setup Method Channel
+        var flutterEngine = FlutterEngine;
+        if (flutterEngine != null)
+        {
+            _methodChannel = new MethodChannel(
+                flutterEngine.DartExecutor.BinaryMessenger,
+                CHANNEL
+            );
+            _methodChannel.SetMethodCallHandler(this);
+        }
+
+        // Assert requirements
         AssertRequirement();
 
-        //ready
-        OnReadyToSetupLayoutPage();
-        SetDarkMode();
-
-        //run utils scripts
+        // Process ADB extras
         ProcessAdbExtras();
     }
 
-    private void SetDarkMode()
-    {
-        AppCompatDelegate.DefaultNightMode = AppCompatDelegate.ModeNightYes;
-    }
-
-    /// <summary>
-    ///     Receive argument launch activity
-    /// </summary>
     private void ProcessAdbExtras()
     {
         if (AdbExtraTool.IsClickStartGame(this))
         {
-            OnClickStartGame();
+            // Auto-start game if launched via ADB
+            HandleStartGame(null);
         }
-    }
-
-    private static bool AssetGameVerify()
-    {
-        try
-        {
-            if (StardewApkTool.IsInstalled == false)
-            {
-                var currentPackage = StardewApkTool.CurrentPackageInfo;
-                if (currentPackage != null)
-                    switch (currentPackage.PackageName)
-                    {
-                        case StardewApkTool.GamePlayStorePackageName:
-                            ToastNotifyTool.Notify("Please Download Game From Play Store");
-                            break;
-                        case StardewApkTool.GameGalaxyStorePackageName:
-                            ToastNotifyTool.Notify("Please Download Game From Galaxy Store");
-                            break;
-                    }
-                else
-                    ToastNotifyTool.Notify("Please Download Game From Play Store Or Galaxy Store");
-
-                return false;
-            }
-        }
-        catch (Exception ex)
-        {
-            ToastNotifyTool.Notify("err;" + ex);
-            return false;
-        }
-
-        return true;
     }
 
     private void AssertRequirement()
     {
-        //check if 32bit not support
-        if (IsDeviceSupport is false)
+        // Check 64-bit support
+        if (IntPtr.Size != 8)
         {
             ToastNotifyTool.Notify("Not support on device 32bit");
             Finish();
             return;
         }
 
-        //Assert Game Requirement
-        if (AssetGameVerify() == false)
+        // Check game installation
+        if (!StardewApkTool.IsInstalled)
         {
+            var currentPackage = StardewApkTool.CurrentPackageInfo;
+            if (currentPackage != null)
+            {
+                switch (currentPackage.PackageName)
+                {
+                    case StardewApkTool.GamePlayStorePackageName:
+                        ToastNotifyTool.Notify("Please Download Game From Play Store");
+                        break;
+                    case StardewApkTool.GameGalaxyStorePackageName:
+                        ToastNotifyTool.Notify("Please Download Game From Galaxy Store");
+                        break;
+                }
+            }
+            else
+            {
+                ToastNotifyTool.Notify("Please Download Game From Play Store Or Galaxy Store");
+            }
             Finish();
             return;
         }
-
     }
 
-
-    private void OnReadyToSetupLayoutPage()
+    public void OnMethodCall(MethodCall call, MethodChannel.IResult? result)
     {
-
-        //setup bind events
         try
         {
-            FindViewById<Button>(ResourceConstant.Id.InstallSMAPIZip).Click += SMAPIInstaller.OnClickInstallSMAPIZip;
-            FindViewById<Button>(ResourceConstant.Id.UploadLog).Click += LogParser.OnClickUploadLog;
-            //Work In Progress
-            //FindViewById<Button>(ResourceConstant.Id.SaveImportFromSavesZip).Click += SaveManager.OnClickImportSaveZip;
+            switch (call.Method)
+            {
+                case "testConnection":
+                    HandleTestConnection(result);
+                    break;
 
-            var startGameBtn = FindViewById<Button>(ResourceConstant.Id.StartGame);
-            startGameBtn.Click += (sender, e) => { OnClickStartGame(); };
-            var modManagerBtn = FindViewById<Button>(ResourceConstant.Id.ModManagerBtn);
-            modManagerBtn.Click += (sender, e) => { ActivityTool.SwapActivity<ModManagerActivity>(this, false); };
+                case "getAppStatus":
+                    HandleGetAppStatus(result);
+                    break;
 
-            SMAPIInstaller.OnInstalledSMAPI += NotifyInstalledSMAPIInfo;
+                case "getModList":
+                    HandleGetModList(result);
+                    break;
+
+                case "startGame":
+                    HandleStartGame(result);
+                    break;
+
+                case "uploadLog":
+                    HandleUploadLog(result);
+                    break;
+
+                case "openModFolder":
+                    HandleOpenModFolder(result);
+                    break;
+
+                case "pickAndInstallSmapi":
+                    HandleInstallSmapi(result);
+                    break;
+
+                case "pickAndInstallMod":
+                    HandleInstallMod(result);
+                    break;
+
+                case "deleteMod":
+                    HandleDeleteMod(call, result);
+                    break;
+
+                default:
+                    result?.NotImplemented();
+                    break;
+            }
         }
         catch (Exception ex)
         {
-            ToastNotifyTool.Notify("Error: Try to setup bind UI Event");
-            ErrorDialogTool.Show(ex);
-            return;
+            result?.Error("ERROR", ex.Message, ex.StackTrace);
         }
+    }
 
-        //set launcher text info
+    private void HandleTestConnection(MethodChannel.IResult? result)
+    {
         try
         {
-            var launcherInfoLines = new StringBuilder();
-            //set app version
-            launcherInfoLines.AppendLine("Launcher Version: " + AppInfo.VersionString);
-
-            var buildDateTimeOffset = DateTimeOffset.FromUnixTimeSeconds(int.Parse(AppInfo.BuildString));
-            var localDateTimeOffset = buildDateTimeOffset.ToLocalTime();
-            var localDateTimeString = localDateTimeOffset.ToString("HH:mm:ss dd/MM/yyyy");
-            launcherInfoLines.AppendLine($"Build: {localDateTimeString} (d/m/y)");
-
-            //set support game version
-            launcherInfoLines.AppendLine($"Support Game Version: {StardewApkTool.GameVersionSupport} Or Later");
-            launcherInfoLines.AppendLine("Your Game Version: " + StardewApkTool.CurrentGameVersion);
-            launcherInfoLines.AppendLine("Discord: Stardew SMAPI Thailand");
-            launcherInfoLines.AppendLine("Owner: NRTnarathip");
-
-            FindViewById<TextView>(ResourceConstant.Id.launcherInfoTextView).Text = launcherInfoLines.ToString();
-
+            var message = "✅ Connection successful from C# Backend!";
+            Android.Util.Log.Info("SMAPI", message);
+            result?.Success(message);
         }
         catch (Exception ex)
         {
-            ToastNotifyTool.Notify("Error:Try setup app text info: " + ex);
-            ErrorDialogTool.Show(ex);
+            result?.Error("ERROR", ex.Message, null);
         }
-
-        //init ui info
-        NotifyInstalledSMAPIInfo();
-
-
     }
 
-    private void NotifyInstalledSMAPIInfo()
+    private void HandleGetAppStatus(MethodChannel.IResult? result)
     {
-        var smapiInstallInfo = FindViewById<TextView>(ResourceConstant.Id.SMAPIInstallInfoTextView);
-        if (SMAPIInstaller.IsInstalled is false)
+        try
         {
-            smapiInstallInfo.Text = "Please install SMAPI!!";
-            return;
-        }
+            var smapiVersion = SMAPIInstaller.GetCurrentVersion();
+            var gameVersion = StardewApkTool.CurrentGameVersion;
+            var statusMap = new HashMap();
+            statusMap.Put("launcherVersion", AppInfo.VersionString);
+            statusMap.Put("gameVersion", gameVersion != null ? gameVersion.ToString() : "Unknown");
+            statusMap.Put("smapiVersion", smapiVersion?.ToString() ?? "Not Installed");
+            statusMap.Put("isGameInstalled", Java.Lang.Boolean.ValueOf(StardewApkTool.IsInstalled));
+            statusMap.Put("isSmapiInstalled", Java.Lang.Boolean.ValueOf(SMAPIInstaller.IsInstalled));
+            statusMap.Put("isReady", Java.Lang.Boolean.ValueOf(StardewApkTool.IsGameVersionSupport && SMAPIInstaller.IsInstalled));
 
-        var lines = new StringBuilder();
-        lines.AppendLine($"SMAPI Version: {SMAPIInstaller.GetCurrentVersion()}");
-        lines.AppendLine($"SMAPI Build: {SMAPIInstaller.GetBuildCode()}");
-        smapiInstallInfo.Text = lines.ToString();
+            result?.Success(statusMap);
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+        }
     }
 
-    private void OnClickStartGame()
+    private void HandleGetModList(MethodChannel.IResult? result)
     {
-        Console.WriteLine("On click start game");
-        EntryGame.LaunchGameActivity(this);
-        Console.WriteLine("done continue UI runner");
+        try
+        {
+            var modList = new ArrayList();
+            var manifestFiles = new List<string>();
+
+            ModTool.FindManifestFile(ModTool.ModsDir, manifestFiles);
+
+            foreach (var manifestPath in manifestFiles)
+            {
+                try
+                {
+                    var manifestText = System.IO.File.ReadAllText(manifestPath);
+                    var manifest = JsonConvert.DeserializeObject<Dictionary<string, object>>(manifestText);
+
+                    var modMap = new HashMap();
+                    modMap.Put("name", manifest?.ContainsKey("Name") == true ? manifest["Name"]?.ToString() ?? "Unknown" : "Unknown");
+                    modMap.Put("version", manifest?.ContainsKey("Version") == true ? manifest["Version"]?.ToString() ?? "Unknown" : "Unknown");
+                    modMap.Put("path", System.IO.Path.GetDirectoryName(manifestPath) ?? "");
+                    modMap.Put("isValid", Java.Lang.Boolean.True);
+                    modList.Add(modMap);
+                }
+                catch
+                {
+                    var errorMap = new HashMap();
+                    errorMap.Put("name", "[ERROR] " + System.IO.Path.GetFileName(System.IO.Path.GetDirectoryName(manifestPath)));
+                    errorMap.Put("version", "Unknown");
+                    errorMap.Put("path", System.IO.Path.GetDirectoryName(manifestPath) ?? "");
+                    errorMap.Put("isValid", Java.Lang.Boolean.False);
+                    modList.Add(errorMap);
+                }
+            }
+
+            result?.Success(modList);
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+        }
+    }
+
+    private void HandleStartGame(MethodChannel.IResult? result)
+    {
+        try
+        {
+            if (!StardewApkTool.IsGameVersionSupport)
+            {
+                result?.Error("UNSUPPORTED_VERSION", "Game version not supported: " + StardewApkTool.CurrentGameVersion, null);
+                ToastNotifyTool.Notify("Not support game version: " + StardewApkTool.CurrentGameVersion);
+                return;
+            }
+
+            if (!SMAPIInstaller.IsInstalled)
+            {
+                result?.Error("SMAPI_NOT_INSTALLED", "Please install SMAPI first", null);
+                ToastNotifyTool.Notify("Please install SMAPI!!");
+                return;
+            }
+
+            GameCloner.Setup();
+
+            // Launch game
+            EntryGame.LaunchGameActivity(this);
+            result?.Success(Java.Lang.Boolean.True);
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+            ToastNotifyTool.Notify("Error: " + ex.Message);
+        }
+    }
+
+    private void HandleUploadLog(MethodChannel.IResult? result)
+    {
+        try
+        {
+            // Call existing log upload functionality
+            LogParser.OnClickUploadLog(this, EventArgs.Empty);
+            result?.Success("Log upload started");
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+        }
+    }
+
+    private void HandleOpenModFolder(MethodChannel.IResult? result)
+    {
+        try
+        {
+            FileTool.OpenAppFiles(ModTool.ModsDir);
+            result?.Success(Java.Lang.Boolean.True);
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+        }
+    }
+
+    private void HandleInstallSmapi(MethodChannel.IResult? result)
+    {
+        try
+        {
+            // Trigger SMAPI installation (will open file picker)
+            SMAPIInstaller.OnClickInstallSMAPIZip(this, EventArgs.Empty);
+            result?.Success("SMAPI installation started");
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+        }
+    }
+
+    private void HandleInstallMod(MethodChannel.IResult? result)
+    {
+        try
+        {
+            // TODO: Implement mod installation via file picker
+            result?.Success(Java.Lang.Boolean.True);
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+        }
+    }
+
+    private void HandleDeleteMod(MethodCall call, MethodChannel.IResult? result)
+    {
+        try
+        {
+            var folderPath = call.Arguments()?.ToString();
+            if (string.IsNullOrEmpty(folderPath))
+            {
+                result?.Error("INVALID_ARGUMENT", "Folder path is required", null);
+                return;
+            }
+
+            if (System.IO.Directory.Exists(folderPath))
+            {
+                System.IO.Directory.Delete(folderPath, true);
+                result?.Success(Java.Lang.Boolean.True);
+            }
+            else
+            {
+                result?.Error("NOT_FOUND", "Mod folder not found", null);
+            }
+        }
+        catch (Exception ex)
+        {
+            result?.Error("ERROR", ex.Message, null);
+        }
     }
 }

@@ -1,5 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="abc.smapi.gameloader">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" 
+          xmlns:tools="http://schemas.android.com/tools"
+          package="abc.smapi.gameloadervn">
+	<uses-sdk android:minSdkVersion="23" android:targetSdkVersion="34" tools:overrideLibrary="abc.smapi.gameloadervn.flutter_ui" />
+	
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />

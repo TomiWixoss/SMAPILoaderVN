@@ -19,5 +19,14 @@
 		<item name="colorPrimaryDark">@color/purple_700</item>
 		<item name="colorAccent">@color/teal_200</item>
 	</style>
+
+	<!-- Flutter Launch Theme -->
+	<style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+		<item name="android:windowBackground">@android:color/white</item>
+		<item name="android:windowNoTitle">true</item>
+		<item name="android:windowActionBar">false</item>
+		<item name="android:windowFullscreen">false</item>
+		<item name="android:windowContentOverlay">@null</item>
+	</style>
 	
 </resources>
